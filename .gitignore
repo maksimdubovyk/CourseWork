@@ -181,3 +181,6 @@ pyrightconfig.json
 /car-numbers-archive/
 /car-numbers-dataset/
 /test-data/
+/car-brand-dataset/
+*.mp4
+test.py

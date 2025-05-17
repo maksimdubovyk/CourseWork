@@ -6,16 +6,16 @@ class ReportVisualizer:
     def draw_report(image, report: RecognitionReport):
         x_offset, y_offset = report.car_detection.box[0], report.car_detection.box[1]
         cv2.rectangle(image, report.car_detection.box[:2], report.car_detection.box[2:], (0, 255, 0), 2)
-        cv2.putText(image, report.car_detection.class_name + ', color: ' + str(report.car_color), 
+        cv2.putText(image, report.car_detection.class_name + ', color: ' + str(report.car_color) + ', brand: ' + str(report.car_brand), 
                     (x_offset, y_offset - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
         if report.car_plate_detection:
             plate_box = ReportVisualizer._shift_box(report.car_plate_detection.box, x_offset, y_offset)
-            cv2.rectangle(image, plate_box[:2], plate_box[2:], (255, 0, 0), 2)
+            cv2.rectangle(image, plate_box[:2], plate_box[2:], (0, 0, 255), 2)
             text = report.car_plate_number or "Plate?"
             cv2.putText(image, text, (plate_box[0], plate_box[1] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         if report.car_damage_detections:
             for damage in report.car_damage_detections:
