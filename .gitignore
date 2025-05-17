@@ -183,4 +183,7 @@ pyrightconfig.json
 /test-data/
 /car-brand-dataset/
 *.mp4
+*.png
+*.jpg
+*.jpeg
 test.py
