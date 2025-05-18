@@ -1,5 +1,3 @@
-
-
 import cv2
 from VehicleAnalysisSystem import VehicleAnalysisSystem
 from ReportVisualizer import ReportVisualizer
@@ -17,6 +15,7 @@ class VideoProcessor:
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         if output_path:
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -34,22 +33,18 @@ class VideoProcessor:
             for report in reports:
                 frame = ReportVisualizer.draw_report(frame, report)
 
-            # Показ у вікні
-            # cv2.imshow("Vehicle Recognition", frame)
-
             # Запис, якщо потрібно
             if writer:
                 writer.write(frame)
 
-            # Обмеження по кадрах
             frame_count += 1
+            print(f"🧠 Оброблено кадрів: {frame_count}/{total_frames}", end='\r')
+
             if max_frames > 0 and frame_count >= max_frames:
                 break
-
-            # if cv2.waitKey(1) & 0xFF == ord('q'):
-            #     break
 
         cap.release()
         if writer:
             writer.release()
         cv2.destroyAllWindows()
+        print(f"\n✅ Завершено. Оброблено {frame_count} кадр(ів) із {min(total_frames, max_frames) if max_frames > 0 else total_frames}.")
