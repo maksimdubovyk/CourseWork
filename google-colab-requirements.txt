@@ -44,7 +44,7 @@ smmap==5.0.2
 sympy==1.13.1
 tifffile==2025.5.10
 torch==2.6.0
-torchvision==0.21.1
+torchvision==0.21.0
 tqdm==4.67.1
 typing_extensions==4.13.2
 tzdata==2025.2
