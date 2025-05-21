@@ -47,4 +47,5 @@ class VideoProcessor:
         if writer:
             writer.release()
         cv2.destroyAllWindows()
+        self.system.write_average_times()
         print(f"\n✅ Завершено. Оброблено {frame_count} кадр(ів) із {min(total_frames, max_frames) if max_frames > 0 else total_frames}.")

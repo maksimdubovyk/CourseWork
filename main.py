@@ -47,7 +47,7 @@ def main():
         processor = VideoProcessor(system)
         processor.process_video(
             args.path,
-            output_path=output_path,
+            # output_path=output_path,
             max_frames=args.max_frames
         )
         print(f"✅ Video processed and saved to {output_path}")
