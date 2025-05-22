@@ -10,6 +10,8 @@ from recognizers.ColorRecognizer import ColorRecognizer, ColorName
 from ImageUtils import ImageUtils
 from recognizers.DetectionResult import DetectionResult
 from RecognitionReport import RecognitionReport
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 
 class VehicleAnalysisSystem:
@@ -38,57 +40,71 @@ class VehicleAnalysisSystem:
         start = time.time()
         vehicle_detections = self.vehicle_recognizer.detect_vehicles(image)
         self.timing_data["VehicleRecognizer"] += time.time() - start
-
         self.total_vehicle_count += len(vehicle_detections)
 
-        for vehicle in vehicle_detections:
+        def process_vehicle(vehicle):
             crop = ImageUtils.extract_plate_image(image, vehicle.box)
+            futures = {}
 
-            # PLATE DETECTION
-            start = time.time()
-            plate_detection: DetectionResult | None = self.plate_recognizer.detect_plate(crop)
-            self.timing_data["PlateRecognizer - detect_plate"] += time.time() - start
+            with ThreadPoolExecutor() as sub_executor:
+                futures['plate'] = sub_executor.submit(self._detect_plate, crop)
+                futures['damage'] = sub_executor.submit(self._detect_damage, crop)
+                futures['color'] = sub_executor.submit(self._detect_color_safe, crop)
+                futures['brand'] = sub_executor.submit(self._detect_brand, crop)
 
-            plate_number = None
-            if plate_detection:
-                plate_crop = ImageUtils.extract_plate_image(crop, plate_detection.box)
-                start = time.time()
-                plate_number, _ = self.plate_recognizer.recognize_text(plate_crop)
-                self.timing_data["PlateRecognizer - recognize_text"] += time.time() - start
-
-            # DAMAGE DETECTION
-            start = time.time()
-            damage_detections = self.damage_recognizer.detect_damages(crop)
-            self.timing_data["DamageRecognizer"] += time.time() - start
-            if not damage_detections:
-                damage_detections = None
-
-            # COLOR DETECTION
-            car_color = None
-            try:
-                start = time.time()
-                car_color = self.color_recognizer.recognize_color(crop)
-                self.timing_data["ColorRecognizer"] += time.time() - start
-            except Exception:
-                pass
-
-            # BRAND DETECTION
-            start = time.time()
-            brand_detections = self.brand_recognizer.detect_brands(crop)
-            self.timing_data["CarBrandRecognizer"] += time.time() - start
-            car_brand = brand_detections[0].class_name if brand_detections else None
+                results = {k: f.result() for k, f in futures.items()}
 
             report = RecognitionReport(
                 car_detection=vehicle,
-                plate_detection=plate_detection,
-                damage_detections=damage_detections,
-                plate_number=plate_number,
-                car_color=car_color,
-                car_brand=car_brand
+                plate_detection=results['plate']["detection"],
+                plate_number=results['plate']["number"],
+                damage_detections=results['damage'],
+                car_color=results['color'],
+                car_brand=results['brand']
             )
+            return report
+
+        for vehicle in vehicle_detections:
+            report = process_vehicle(vehicle)
             reports.append(report)
 
         return reports
+
+    def _detect_plate(self, crop):
+        result = {"detection": None, "number": None}
+        start = time.time()
+        plate_detection = self.plate_recognizer.detect_plate(crop)
+        self.timing_data["PlateRecognizer - detect_plate"] += time.time() - start
+        result["detection"] = plate_detection
+
+        if plate_detection:
+            plate_crop = ImageUtils.extract_plate_image(crop, plate_detection.box)
+            start = time.time()
+            plate_number, _ = self.plate_recognizer.recognize_text(plate_crop)
+            self.timing_data["PlateRecognizer - recognize_text"] += time.time() - start
+            result["number"] = plate_number
+        return result
+
+    def _detect_damage(self, crop):
+        start = time.time()
+        damages = self.damage_recognizer.detect_damages(crop)
+        self.timing_data["DamageRecognizer"] += time.time() - start
+        return damages if damages else None
+
+    def _detect_color_safe(self, crop):
+        try:
+            start = time.time()
+            color = self.color_recognizer.recognize_color(crop)
+            self.timing_data["ColorRecognizer"] += time.time() - start
+            return color
+        except Exception:
+            return None
+
+    def _detect_brand(self, crop):
+        start = time.time()
+        detections = self.brand_recognizer.detect_brands(crop)
+        self.timing_data["CarBrandRecognizer"] += time.time() - start
+        return detections[0].class_name if detections else None
 
     def write_average_times(self, output_file: str = "recognition_times_avg.log"):
         with open(output_file, "w") as f:
